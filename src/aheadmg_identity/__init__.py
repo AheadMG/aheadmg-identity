@@ -19,8 +19,10 @@ from .models import (
     TenantAllowlist,
     User,
     UserAppRole,
+    UserPageVisit,
 )
 from .roles import APP_ROLES, DEFAULT_ROLE, sync_app_registration
+from .visits import visits_bp
 
 __all__ = [
     # db / schema plumbing
@@ -34,6 +36,7 @@ __all__ = [
     "AppCatalog",
     "AppRole",
     "UserAppRole",
+    "UserPageVisit",
     "AuditLog",
     # model constants
     "TENANT_MODE_OPEN",
@@ -50,4 +53,6 @@ __all__ = [
     "require_role",
     "require_admin",
     "user_roles",
+    # blueprints
+    "visits_bp",
 ]

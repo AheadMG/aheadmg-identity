@@ -8,15 +8,13 @@ create the platform's logical schemas. Equivalent on the backend to what
 
 ## Install
 
-Hosted as a private git repository — pip installs over HTTPS using a token:
+Hosted publicly on GitHub — pip installs over plain HTTPS, no token:
 
 ```
-pip install "aheadmg-identity @ git+https://x-access-token:${GITHUB_PACKAGES_TOKEN}@github.com/AheadMG/aheadmg-identity.git@v0.1.0"
+pip install "aheadmg-identity @ git+https://github.com/AheadMG/aheadmg-identity.git@v0.2.0"
 ```
 
-For local dev: substitute a personal access token with `read:packages`
-permission, or install from a relative checkout (`pip install -e
-../aheadmg-identity`).
+For local dev install from a relative checkout: `pip install -e ../aheadmg-identity`.
 
 ## Usage
 
@@ -45,6 +43,11 @@ def me(): ...
 @app.post("/api/admin/...")
 @require_role("admin")
 def admin_only(): ...
+
+# Register the shared `POST /api/visits` endpoint so the Hub can read
+# this app's page-visit history for "Resume where you left off".
+from aheadmg_identity import visits_bp
+app.register_blueprint(visits_bp)
 ```
 
 ## Identity model
@@ -56,6 +59,7 @@ def admin_only(): ...
 | `identity.app_catalog` | Apps registered on the platform (Hub, Flow, …) |
 | `identity.app_role` | Each app's grantable roles |
 | `identity.user_app_role` | A user holds a role on an app — at least one row = "can access this app" |
+| `identity.user_page_visit` | Append-only log of in-app page visits, used by Hub's "Resume where you left off" |
 | `identity.audit_log` | Admin actions taken via the Hub |
 
 A user with zero `user_app_role` rows for an app is denied access by

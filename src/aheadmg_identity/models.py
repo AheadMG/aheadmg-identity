@@ -4,6 +4,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -128,6 +129,45 @@ class UserAppRole(Base):
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
     granted_by_oid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+
+class UserPageVisit(Base):
+    """Append-only log of in-app page navigations. Every front-end route
+    change in a non-Hub app posts one row; the Hub home reads the latest
+    row per user to render a "Resume where you left off" card.
+
+    Append-only (no upsert) so we keep the full history — useful for a
+    future "recent pages" view and basic analytics. The Hub itself does
+    NOT log its own page visits; the launcher and admin pages are not
+    something the user wants to "resume to".
+    """
+
+    __tablename__ = "user_page_visit"
+    __table_args__ = (
+        # Hot index for the resume-where-you-left-off query, which is
+        # `latest visit for user X` ordered by visited_at DESC.
+        Index("ix_user_page_visit_user_visited", "user_id", "visited_at"),
+        {"schema": "identity"},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("identity.user.id"), nullable=False
+    )
+    # Denormalised app slug rather than an FK to app_catalog — keeps the
+    # write path cheap and avoids cascading deletes if an app is ever
+    # removed from the catalog; we tolerate "orphan" rows for retired apps.
+    app_slug: Mapped[str] = mapped_column(String(50), nullable=False)
+    # The SPA route the user landed on, including any querystring. 500 is
+    # generous; longer URLs are truncated client-side.
+    route: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Optional human-readable label from `document.title` so the Hub's
+    # resume card can say "Resume: Project Atlas — Discovery" rather than
+    # echoing the raw route.
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    visited_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
 
 
 class AuditLog(Base):
