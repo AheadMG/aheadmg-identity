@@ -11,7 +11,7 @@ create the platform's logical schemas. Equivalent on the backend to what
 Hosted publicly on GitHub — pip installs over plain HTTPS, no token:
 
 ```
-pip install "aheadmg-identity @ git+https://github.com/AheadMG/aheadmg-identity.git@v0.2.0"
+pip install "aheadmg-identity @ git+https://github.com/AheadMG/aheadmg-identity.git@v0.3.0"
 ```
 
 For local dev install from a relative checkout: `pip install -e ../aheadmg-identity`.

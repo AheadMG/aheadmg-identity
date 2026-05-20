@@ -34,14 +34,16 @@ def sync_app_registration(
     slug: str,
     display_name: str,
     url: str,
+    icon: str | None = None,
     roles: list[tuple[str, str, str]] | None = None,
 ) -> None:
     """Upsert this app's `app_catalog` row and its `app_role` rows. Runs on
     every startup so the identity DB reflects the deployed app. Idempotent.
 
-    Only code-owned fields (display_name, url, role definitions) are
-    refreshed on update — admin-editable fields (icon, description on the
-    catalog row, enabled, sort_order) are left untouched.
+    Code-owned fields (display_name, url, icon, role definitions) are
+    refreshed on every call; admin-editable fields (description, enabled,
+    sort_order) are left untouched. Pass `icon=None` to leave the icon
+    column alone — useful while an app hasn't decided on a logo yet.
     """
     from .models import AppCatalog, AppRole
 
@@ -49,10 +51,14 @@ def sync_app_registration(
 
     app = session.get(AppCatalog, slug)
     if app is None:
-        session.add(AppCatalog(slug=slug, display_name=display_name, url=url))
+        session.add(
+            AppCatalog(slug=slug, display_name=display_name, url=url, icon=icon)
+        )
     else:
         app.display_name = display_name
         app.url = url
+        if icon is not None:
+            app.icon = icon
 
     for index, (role_key, role_name, role_desc) in enumerate(role_set, start=1):
         role = session.get(AppRole, (slug, role_key))
