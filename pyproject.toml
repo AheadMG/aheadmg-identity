@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aheadmg-identity"
+version = "0.1.0"
+description = "Shared identity models, auth helpers and role definitions for AheadMG apps."
+requires-python = ">=3.10"
+dependencies = [
+    "Flask>=3,<4",
+    "SQLAlchemy>=2,<3",
+    "PyJWT[crypto]>=2",
+]
+license = { text = "UNLICENSED" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
