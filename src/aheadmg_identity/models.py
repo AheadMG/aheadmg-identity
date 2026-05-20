@@ -81,7 +81,13 @@ class AppCatalog(Base):
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     url: Mapped[str] = mapped_column(String(500), nullable=False)
-    icon: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # `icon` is the small mark used in nav / list contexts (sidebar
+    # app-switcher, admin lists). `feature_icon` is the larger / fuller
+    # mark used in prominent contexts (resume card, hero tiles). Either
+    # may be null — display surfaces fall back to icon, then to a
+    # letter placeholder.
+    icon: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    feature_icon: Mapped[str | None] = mapped_column(String(500), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

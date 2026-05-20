@@ -46,6 +46,33 @@ def _ensure_schemas(engine) -> None:
             )
 
 
+# Lightweight column-level migrations.
+#
+# `create_all` only creates tables that don't exist — it never adds new
+# columns to existing tables. For each new column we add to an existing
+# model, list it here and `_ensure_columns` will add it idempotently on
+# startup (SQL Server's `sys.columns` lookup, then a plain ALTER TABLE).
+#
+# When we move to a real migration tool (Alembic) this list goes away;
+# until then it lets the platform self-upgrade without manual SQL.
+_NEW_COLUMNS: list[tuple[str, str, str, str]] = [
+    # (schema, table, column, sql_type)
+    ("identity", "app_catalog", "feature_icon", "NVARCHAR(500) NULL"),
+]
+
+
+def _ensure_columns(engine) -> None:
+    with engine.begin() as conn:
+        for schema, table, column, sql_type in _NEW_COLUMNS:
+            conn.exec_driver_sql(
+                f"IF NOT EXISTS ("
+                f"  SELECT 1 FROM sys.columns "
+                f"  WHERE Name = N'{column}' "
+                f"    AND Object_ID = Object_ID(N'{schema}.{table}')"
+                f") ALTER TABLE [{schema}].[{table}] ADD [{column}] {sql_type}"
+            )
+
+
 def init_db(app: Flask) -> None:
     """Wire SQLAlchemy to this Flask app's SQL connection, ensure platform
     schemas exist, and run create_all so any models registered against the
@@ -60,6 +87,7 @@ def init_db(app: Flask) -> None:
 
     _ensure_schemas(db.engine)
     Base.metadata.create_all(db.engine)
+    _ensure_columns(db.engine)
 
     @app.teardown_appcontext
     def _remove_session(exc):  # noqa: ANN001
