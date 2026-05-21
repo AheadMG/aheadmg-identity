@@ -91,13 +91,22 @@ def _migrate_oid_to_filtered_unique(engine) -> None:
     branch.
     """
     with engine.begin() as conn:
-        # Drop the legacy non-filtered unique index/constraint on oid,
-        # if one exists. The name was assigned by SQLAlchemy and varies,
-        # so we look it up via sys.indexes.
+        # Drop EVERY legacy non-filtered unique index/constraint on
+        # identity.user.oid — there can be more than one (SQLAlchemy's
+        # earlier model declared both unique=True AND index=True, which
+        # produced a UNIQUE constraint plus a separate unique index
+        # `ix_user_oid`). Loop until none remain, using the right DROP
+        # syntax depending on whether each is backed by a constraint.
         conn.exec_driver_sql(
             """
-            DECLARE @oid_idx sysname = (
-              SELECT TOP 1 i.name
+            DECLARE @cur_name sysname, @is_constraint bit;
+
+            WHILE 1 = 1
+            BEGIN
+              SET @cur_name = NULL;
+              SELECT TOP 1
+                @cur_name = i.name,
+                @is_constraint = i.is_unique_constraint
               FROM sys.indexes i
               JOIN sys.index_columns ic
                 ON ic.object_id = i.object_id AND ic.index_id = i.index_id
@@ -108,9 +117,16 @@ def _migrate_oid_to_filtered_unique(engine) -> None:
                 AND i.is_unique = 1
                 AND i.has_filter = 0
                 AND i.is_primary_key = 0
-            );
-            IF @oid_idx IS NOT NULL
-              EXEC('DROP INDEX [' + @oid_idx + '] ON identity.[user]')
+                AND i.name <> 'ix_user_oid_unique_notnull';
+
+              IF @cur_name IS NULL BREAK;
+
+              IF @is_constraint = 1
+                EXEC('ALTER TABLE identity.[user] DROP CONSTRAINT ['
+                     + @cur_name + ']');
+              ELSE
+                EXEC('DROP INDEX [' + @cur_name + '] ON identity.[user]');
+            END
             """
         )
         # Create the filtered unique index if it isn't there yet.
