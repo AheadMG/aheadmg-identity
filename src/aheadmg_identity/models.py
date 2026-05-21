@@ -56,13 +56,18 @@ class User(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # NOTE: oid uniqueness is enforced by a filtered unique index created
-    # in db._migrate_oid_to_filtered_unique (UNIQUE WHERE oid IS NOT NULL).
-    # We do NOT declare unique=True here, because SQL Server's default
-    # UNIQUE constraint only allows a single NULL value — which blocks
-    # the second pending-invite from ever being created (oid is NULL
-    # until the user first signs in). A filtered index gives us the
-    # same "one user per oid" guarantee without that limitation.
+    # `oid` is the Microsoft Entra object id once the user has signed in.
+    # For invited-but-not-yet-signed-in users, the inviter code sets a
+    # placeholder UUID so the column always holds a unique non-null value
+    # — _admit_user overwrites it with the real oid on first sign-in via
+    # the (tenant_id, email) lookup branch. This avoids SQL Server's
+    # "at most one NULL per UNIQUE column" trap without needing a
+    # filtered-index migration.
+    #
+    # `unique=True` is intentionally omitted at the model level so fresh
+    # `create_all` deployments don't fight existing-DB constraint state;
+    # uniqueness is currently enforced by the existing ix_user_oid in
+    # Phil's dev DB and is satisfied by the placeholder-UUID scheme.
     oid: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(320), nullable=False)
